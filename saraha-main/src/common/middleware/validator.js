@@ -1,16 +1,20 @@
+
 export const validator = (schema) => {
     return (req, res, next) => {
         try {
             const language =
                 req.headers["accept-language"] || "en";
 
-            const result = schema(language).safeParse({
+            // Support both function schemas and regular Zod schemas
+            const validationSchema =
+                typeof schema === "function"
+                    ? schema(language)
+                    : schema;
+
+            const result = validationSchema.safeParse({
                 body: req.body,
-
                 params: req.params,
-
                 query: req.query,
-
                 headers: req.headers
             });
 

@@ -28,21 +28,23 @@ import {
     paginationSchema
 } from "./user.validation.js";
 
+import {
+    get,
+    set
+} from "../../common/services/cache.service.js";
+
 const userRouter = Router();
 
 userRouter.get(
     "/all",
     auth,
     authorization(roleEnum.admin),
-    validator(
-        paginationSchema
-    ),
+    validator(paginationSchema),
     async (req, res, next) => {
         try {
-            const users =
-                await getAllUsers(
-                    req.validated.query
-                );
+            const users = await getAllUsers(
+                req.validated.query
+            );
 
             return response({
                 res,
@@ -59,27 +61,50 @@ userRouter.get(
 userRouter.get(
     "/:userId",
     auth,
-    validator(
-        getUserByIdSchema
-    ),
+    validator(getUserByIdSchema),
     async (req, res, next) => {
         try {
-            const user =
-                await getUserById(
-                    req.validated
-                        .params.userId
-                );
+            const userId =
+                req.validated.params.userId;
 
-            if (user.phone) {
-                user.phone =
-                    decrypting(
-                        user.phone
-                    );
+            const cacheKey = `user:${userId}`;
+
+            let user = await get({
+                key: cacheKey
+            });
+
+            if (user) {
+                console.log("User fetched from Redis");
+            } else {
+                const userDocument =
+                    await getUserById(userId);
+
+                user = userDocument.toObject();
+
+                await set({
+                    key: cacheKey,
+                    value: user,
+                    ttl: 60
+                });
+
+                console.log("User fetched from MongoDB");
+            }
+
+            // Decrypt phone only for this response.
+            // Keep the cached phone encrypted.
+            if (
+                req.validated.query.phone &&
+                user.phone
+            ) {
+                user = {
+                    ...user,
+                    phone: decrypting(user.phone)
+                };
             }
 
             return response({
                 res,
-                data: user,
+                data: user || {},
                 status: 200,
                 message: "user fetched"
             });
@@ -97,10 +122,7 @@ userRouter.get(
             const user = req.user;
 
             if (user.phone) {
-                user.phone =
-                    decrypting(
-                        user.phone
-                    );
+                user.phone = decrypting(user.phone);
             }
 
             return response({

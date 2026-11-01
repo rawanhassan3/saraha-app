@@ -59,7 +59,12 @@ const userSchema = new mongoose.Schema(
 
         confirmEmail: {
             type: Date,
-            default: new Date()
+            default: () => new Date()
+        },
+        
+        isEmailConfirmed: {
+            type: Boolean,
+            default: false
         },
 
         provider: {
@@ -72,6 +77,11 @@ const userSchema = new mongoose.Schema(
             type: Number,
             enum: Object.values(enums.roleEnum),
             default: enums.roleEnum.user
+        },
+
+        changedAt: {
+            type: Number,
+            default: 0
         }
     },
     {

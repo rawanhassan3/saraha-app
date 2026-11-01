@@ -1,0 +1,1 @@
+export { messageRouter } from "./message.controller.js";
